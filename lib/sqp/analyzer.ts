@@ -1,7 +1,9 @@
 import { prisma } from "@/lib/db/prisma";
 import { ratio } from "@/lib/utils";
-import type { SqpAction } from "@prisma/client";
 import type { DateRange } from "@/lib/analytics/types";
+
+/** SQP recommendation buckets (mirrors the SqpAction enum in schema.prisma). */
+export type SqpAction = "SCALE" | "CUT" | "TEST" | "DEFEND" | "MAINTAIN";
 
 export interface SqpAnalyzedRow {
   query: string;

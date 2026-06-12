@@ -16,7 +16,10 @@ export function getSyncQueue(): Queue<SyncJobPayload> | null {
   const connection = getRedis();
   if (!connection) return null;
   if (!syncQueue) {
-    syncQueue = new Queue<SyncJobPayload>(SYNC_QUEUE_NAME, { connection });
+    // ioredis instance is shared; cast to satisfy BullMQ's bundled typings.
+    syncQueue = new Queue<SyncJobPayload>(SYNC_QUEUE_NAME, {
+      connection: connection as never,
+    });
   }
   return syncQueue;
 }

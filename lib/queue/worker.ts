@@ -25,7 +25,7 @@ function main() {
       console.log(`[worker] processing ${job.name} (${job.id})`, job.data);
       return processSyncJob(job.data);
     },
-    { connection, concurrency: 4 }
+    { connection: connection as never, concurrency: 4 }
   );
 
   worker.on("completed", (job) => {
