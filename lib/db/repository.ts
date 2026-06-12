@@ -29,7 +29,7 @@ function mergeClientShells(databaseClients: Array<{ id: string; brandName: strin
 }
 
 export async function getWorkspace(): Promise<DemoWorkspace> {
-  if (!databaseConfigured) {
+  if (!databaseConfigured || !prisma) {
     return demoWorkspace;
   }
 

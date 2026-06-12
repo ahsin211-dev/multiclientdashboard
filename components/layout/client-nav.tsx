@@ -1,3 +1,4 @@
+import type { Route } from "next";
 import Link from "next/link";
 
 import { cn } from "@/lib/utils";
@@ -21,7 +22,7 @@ export function ClientNav({ clientId, current }: ClientNavProps) {
       {links.map((link) => (
         <Link
           key={link.suffix}
-          href={`/clients/${clientId}/${link.suffix}`}
+          href={`/clients/${clientId}/${link.suffix}` as Route}
           className={cn(
             "rounded-full px-4 py-2 text-sm font-medium transition",
             current === link.suffix

@@ -10,7 +10,7 @@ import { ProductTable } from "@/components/tables/product-table";
 import { SearchTermTable } from "@/components/tables/search-term-table";
 import { getCampaignPerformance, getPerformanceSummary, getProductPerformance, getSearchTermPerformance, getTrendSeries, getWastedSpend, type MetricCardValue } from "@/lib/analytics/service";
 import { getClients } from "@/lib/db/repository";
-import { formatCurrency, parseDateRange } from "@/lib/utils";
+import { parseDateRange } from "@/lib/utils";
 
 type DashboardPageProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;

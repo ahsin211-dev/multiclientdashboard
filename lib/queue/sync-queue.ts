@@ -1,5 +1,4 @@
 import { Queue } from "bullmq";
-import Redis from "ioredis";
 
 import { syncAdGroups, syncCampaigns, syncKeywords, syncSearchTerms } from "@/lib/amazon/ads";
 import { syncSQPData } from "@/lib/amazon/brand-analytics";
@@ -12,7 +11,7 @@ export type SyncJobPayload = {
   trigger: "manual" | "daily";
 };
 
-let syncQueue: Queue<SyncJobPayload> | null = null;
+let syncQueue: Queue | null = null;
 
 function getQueue() {
   if (!REDIS_URL) {
@@ -20,13 +19,18 @@ function getQueue() {
   }
 
   if (!syncQueue) {
-    const connection = new Redis(REDIS_URL, {
-      maxRetriesPerRequest: null,
-      enableReadyCheck: false,
-    });
+    const redisUrl = new URL(REDIS_URL);
 
-    syncQueue = new Queue<SyncJobPayload>("client-sync", {
-      connection,
+    syncQueue = new Queue("client-sync", {
+      connection: {
+        host: redisUrl.hostname,
+        port: Number(redisUrl.port || 6379),
+        username: redisUrl.username || undefined,
+        password: redisUrl.password || undefined,
+        maxRetriesPerRequest: null,
+        enableReadyCheck: false,
+        tls: redisUrl.protocol === "rediss:" ? {} : undefined,
+      },
       defaultJobOptions: {
         attempts: 3,
         removeOnComplete: 100,

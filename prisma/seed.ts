@@ -1,6 +1,14 @@
-import { PrismaClient, CampaignStatus, ConnectionStatus, ConnectionType, Marketplace, MatchType, RecordStatus, Role, SyncStatus } from "@prisma/client";
+import "dotenv/config";
+import { PrismaPg } from "@prisma/adapter-pg";
+import { CampaignStatus, ChatRole, ConnectionStatus, ConnectionType, JobStatus, Marketplace, MatchType, PrismaClient, RecordStatus, Role, SyncStatus } from "@prisma/client";
 
-const prisma = new PrismaClient();
+const prisma = new PrismaClient({
+  adapter: new PrismaPg({
+    connectionString:
+      process.env.DATABASE_URL ??
+      "postgresql://user:password@localhost:5432/amazon_intel?schema=public",
+  }),
+});
 
 type ClientBlueprint = {
   brandName: string;
@@ -481,12 +489,12 @@ async function seedClient(workspaceId: string, blueprint: ClientBlueprint, seedI
     data: [
       {
         sessionId: session.id,
-        role: "USER",
+        role: ChatRole.USER,
         content: "Why did ACOS move up last week?",
       },
       {
         sessionId: session.id,
-        role: "ASSISTANT",
+        role: ChatRole.ASSISTANT,
         content: "Generic prospecting campaigns increased spend faster than revenue, while branded campaigns remained efficient.",
       },
     ],
@@ -496,7 +504,7 @@ async function seedClient(workspaceId: string, blueprint: ClientBlueprint, seedI
     data: {
       clientId: client.id,
       type: "daily-sync",
-      status: "COMPLETED",
+      status: JobStatus.COMPLETED,
       attempts: 1,
       startedAt: daysAgo(1),
       completedAt: new Date(daysAgo(1).getTime() + 1000 * 60 * 4),

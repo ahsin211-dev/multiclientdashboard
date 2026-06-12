@@ -1,3 +1,4 @@
+import type { Route } from "next";
 import Link from "next/link";
 import { BarChart3, Bot, Briefcase, Building2, Cable, FileText, SearchCheck, Settings2 } from "lucide-react";
 
@@ -43,7 +44,7 @@ export function AppSidebar({ workspace, currentClientId }: AppSidebarProps) {
             return (
               <Link
                 key={item.href}
-                href={item.href}
+                href={item.href as Route}
                 className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-slate-300 transition hover:bg-slate-900 hover:text-white"
               >
                 <Icon className="h-4 w-4" />
@@ -61,7 +62,7 @@ export function AppSidebar({ workspace, currentClientId }: AppSidebarProps) {
               return (
                 <Link
                   key={item.suffix}
-                  href={`/clients/${currentClientId}/${item.suffix}`}
+                  href={`/clients/${currentClientId}/${item.suffix}` as Route}
                   className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-slate-300 transition hover:bg-slate-900 hover:text-white"
                 >
                   <Icon className="h-4 w-4" />
