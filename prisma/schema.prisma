@@ -1,0 +1,417 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum WorkspaceRole {
+  OWNER
+  ADMIN
+  ANALYST
+  VIEWER
+}
+
+enum Marketplace {
+  US
+  CA
+  UK
+  DE
+  FR
+  IT
+  ES
+  JP
+  AU
+  MX
+}
+
+enum ConnectionType {
+  AMAZON_ADS
+  SP_API
+}
+
+enum ConnectionStatus {
+  PENDING
+  CONNECTED
+  EXPIRED
+  ERROR
+}
+
+enum SyncStatus {
+  IDLE
+  SYNCING
+  SUCCESS
+  FAILED
+}
+
+enum SyncJobStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+enum SyncJobType {
+  FULL
+  CAMPAIGNS
+  AD_GROUPS
+  KEYWORDS
+  SEARCH_TERMS
+  PRODUCTS
+  SALES_METRICS
+  SQP_DATA
+}
+
+enum AuditFindingType {
+  WASTED_SPEND
+  HIGH_ACOS
+  LOW_CTR
+  STRONG_ROAS
+  SQP_MISSED_OPPORTUNITY
+  PRODUCT_CONVERSION
+}
+
+enum SQPAction {
+  SCALE
+  CUT
+  TEST
+  DEFEND
+  MONITOR
+}
+
+model User {
+  id            String            @id @default(cuid())
+  email         String            @unique
+  name          String?
+  passwordHash  String
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  memberships   WorkspaceMember[]
+  chatSessions  ChatSession[]
+}
+
+model Workspace {
+  id        String            @id @default(cuid())
+  name      String
+  slug      String            @unique
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+  members   WorkspaceMember[]
+  clients   Client[]
+}
+
+model WorkspaceMember {
+  id          String        @id @default(cuid())
+  workspaceId String
+  userId      String
+  role        WorkspaceRole @default(ANALYST)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  workspace   Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, userId])
+  @@index([userId])
+}
+
+model Client {
+  id              String             @id @default(cuid())
+  workspaceId     String
+  brandName       String
+  marketplace     Marketplace        @default(US)
+  syncStatus      SyncStatus         @default(IDLE)
+  lastSyncAt      DateTime?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  workspace       Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  connections     AmazonConnection[]
+  adAccounts      AdAccount[]
+  campaigns       Campaign[]
+  products        Product[]
+  salesMetrics    SalesMetric[]
+  adMetrics       AdMetric[]
+  sqpMetrics      SQPMetric[]
+  auditReports    AuditReport[]
+  marketingPlans  MarketingPlan[]
+  chatSessions    ChatSession[]
+  syncJobs        DataSyncJob[]
+
+  @@index([workspaceId])
+}
+
+model AmazonConnection {
+  id              String           @id @default(cuid())
+  clientId        String
+  type            ConnectionType
+  status          ConnectionStatus @default(PENDING)
+  accessToken     String?          @db.Text
+  refreshToken    String?          @db.Text
+  tokenExpiresAt  DateTime?
+  profileId       String?
+  sellerId        String?
+  marketplaceId   String?
+  metadata        Json?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  client          Client           @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([clientId])
+}
+
+model AdAccount {
+  id          String     @id @default(cuid())
+  clientId    String
+  accountId   String
+  name        String
+  marketplace Marketplace @default(US)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  client      Client     @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  campaigns   Campaign[]
+
+  @@unique([clientId, accountId])
+  @@index([clientId])
+}
+
+model Campaign {
+  id           String    @id @default(cuid())
+  clientId     String
+  adAccountId  String
+  externalId   String
+  name         String
+  status       String    @default("ENABLED")
+  campaignType String?
+  budget       Float?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  client       Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  adAccount    AdAccount @relation(fields: [adAccountId], references: [id], onDelete: Cascade)
+  adGroups     AdGroup[]
+  adMetrics    AdMetric[]
+
+  @@unique([clientId, externalId])
+  @@index([clientId])
+  @@index([adAccountId])
+}
+
+model AdGroup {
+  id         String    @id @default(cuid())
+  campaignId String
+  externalId String
+  name       String
+  status     String    @default("ENABLED")
+  defaultBid Float?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  campaign   Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  keywords   Keyword[]
+  adMetrics  AdMetric[]
+
+  @@unique([campaignId, externalId])
+  @@index([campaignId])
+}
+
+model Keyword {
+  id         String    @id @default(cuid())
+  adGroupId  String
+  externalId String
+  keyword    String
+  matchType  String?
+  bid        Float?
+  status     String    @default("ENABLED")
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  adGroup    AdGroup   @relation(fields: [adGroupId], references: [id], onDelete: Cascade)
+  adMetrics  AdMetric[]
+
+  @@unique([adGroupId, externalId])
+  @@index([adGroupId])
+}
+
+model SearchTerm {
+  id         String   @id @default(cuid())
+  clientId   String
+  campaignId String?
+  adGroupId  String?
+  query      String
+  matchType  String?
+  impressions Int     @default(0)
+  clicks     Int      @default(0)
+  spend      Float    @default(0)
+  sales      Float    @default(0)
+  orders     Int      @default(0)
+  acos       Float?
+  roas       Float?
+  date       DateTime @db.Date
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([clientId, date])
+  @@index([query])
+}
+
+model Product {
+  id        String        @id @default(cuid())
+  clientId  String
+  asin      String
+  sku       String?
+  title     String?
+  imageUrl  String?
+  price     Float?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  client    Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  salesMetrics SalesMetric[]
+
+  @@unique([clientId, asin])
+  @@index([clientId])
+}
+
+model SalesMetric {
+  id        String   @id @default(cuid())
+  clientId  String
+  productId String?
+  date      DateTime @db.Date
+  orders    Int      @default(0)
+  units     Int      @default(0)
+  revenue   Float    @default(0)
+  sessions  Int      @default(0)
+  pageViews Int      @default(0)
+  conversionRate Float?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  client    Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  product   Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  @@index([clientId, date])
+  @@index([productId])
+}
+
+model AdMetric {
+  id          String   @id @default(cuid())
+  clientId    String
+  campaignId  String?
+  adGroupId   String?
+  keywordId   String?
+  date        DateTime @db.Date
+  impressions Int      @default(0)
+  clicks      Int      @default(0)
+  spend       Float    @default(0)
+  sales       Float    @default(0)
+  orders      Int      @default(0)
+  acos        Float?
+  roas        Float?
+  ctr         Float?
+  cpc         Float?
+  cvr         Float?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  campaign    Campaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  adGroup     AdGroup?  @relation(fields: [adGroupId], references: [id], onDelete: SetNull)
+  keyword     Keyword?  @relation(fields: [keywordId], references: [id], onDelete: SetNull)
+
+  @@index([clientId, date])
+  @@index([campaignId])
+}
+
+model SQPMetric {
+  id               String    @id @default(cuid())
+  clientId         String
+  query            String
+  date             DateTime  @db.Date
+  impressionShare  Float?
+  clickShare       Float?
+  cartAddShare     Float?
+  purchaseShare    Float?
+  ppcSpend         Float     @default(0)
+  ppcClicks        Int       @default(0)
+  ppcOrders        Int       @default(0)
+  ppcSales         Float     @default(0)
+  ppcAcos          Float?
+  ppcRoas          Float?
+  recommendedAction SQPAction?
+  actionReason     String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  client           Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([clientId, date])
+  @@index([query])
+}
+
+model AuditReport {
+  id          String   @id @default(cuid())
+  clientId    String
+  title       String
+  summary     String?  @db.Text
+  findings    Json
+  score       Float?
+  dateRange   Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([clientId])
+}
+
+model MarketingPlan {
+  id          String   @id @default(cuid())
+  clientId    String
+  title       String
+  summary     String?  @db.Text
+  sections    Json
+  roadmap     Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([clientId])
+}
+
+model ChatSession {
+  id        String        @id @default(cuid())
+  clientId  String
+  userId    String
+  title     String?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  client    Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages  ChatMessage[]
+
+  @@index([clientId])
+  @@index([userId])
+}
+
+model ChatMessage {
+  id        String      @id @default(cuid())
+  sessionId String
+  role      String
+  content   String      @db.Text
+  metadata  Json?
+  createdAt DateTime    @default(now())
+  session   ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+}
+
+model DataSyncJob {
+  id          String        @id @default(cuid())
+  clientId    String
+  type        SyncJobType   @default(FULL)
+  status      SyncJobStatus @default(PENDING)
+  startedAt   DateTime?
+  completedAt DateTime?
+  error       String?       @db.Text
+  logs        Json?
+  retryCount  Int           @default(0)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  client      Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([clientId, status])
+  @@index([createdAt])
+}
