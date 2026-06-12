@@ -7,4 +7,5 @@ coverage
 .env.*.local
 generated
 *.log
+*.tsbuildinfo
 prisma/migrations/dev.db*

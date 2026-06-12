@@ -1,5 +1,4 @@
-import { Queue, Worker, type Job } from "bullmq";
-import IORedis from "ioredis";
+import { Queue, Worker, type ConnectionOptions, type Job } from "bullmq";
 import { runInitialClientSync } from "@/lib/amazon/sync";
 import { env } from "@/lib/env";
 
@@ -8,19 +7,26 @@ export type SyncJobPayload = {
   reason: "manual" | "scheduled" | "oauth-connected" | "retry";
 };
 
-let queue: Queue<SyncJobPayload> | null = null;
+let queue: Queue | null = null;
 
-function getConnection() {
+function getConnection(): ConnectionOptions | null {
   if (!env.REDIS_URL) return null;
-  return new IORedis(env.REDIS_URL, {
+
+  const url = new URL(env.REDIS_URL);
+  return {
+    host: url.hostname,
+    port: Number(url.port || 6379),
+    username: url.username || undefined,
+    password: url.password || undefined,
+    tls: url.protocol === "rediss:" ? {} : undefined,
     maxRetriesPerRequest: null,
-  });
+  };
 }
 
 export function getSyncQueue() {
   const connection = getConnection();
   if (!connection) return null;
-  queue ??= new Queue<SyncJobPayload>("amazon-client-sync", { connection });
+  queue ??= new Queue("amazon-client-sync", { connection });
   return queue;
 }
 
