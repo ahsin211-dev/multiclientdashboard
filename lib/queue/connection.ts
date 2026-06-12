@@ -27,6 +27,12 @@ export function getRedis(): Redis | null {
   return connection;
 }
 
+/**
+ * BullMQ is only used when explicitly enabled (ENABLE_QUEUE=true) AND a
+ * REDIS_URL is present. This keeps the app working out-of-the-box (syncs run
+ * inline) while still supporting a real queue + worker in production. Run the
+ * worker with `npm run worker` when ENABLE_QUEUE=true.
+ */
 export function isQueueEnabled(): boolean {
-  return Boolean(process.env.REDIS_URL);
+  return process.env.ENABLE_QUEUE === "true" && Boolean(process.env.REDIS_URL);
 }

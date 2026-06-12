@@ -20,6 +20,13 @@ export type SyncLogger = (msg: string) => Promise<void> | void;
 const WINDOW_DAYS = 60;
 
 function nicheForClient(brandName: string) {
+  const n = brandName.toLowerCase();
+  // Match the niche to the brand name when possible for a coherent demo.
+  if (/nutri|supp|vitamin|health|protein|fit/.test(n)) return NICHES.supplements;
+  if (/chef|kitchen|cook|home|cook/.test(n)) return NICHES.kitchen;
+  if (/beauty|lumi|skin|glow|cosm|care/.test(n)) return NICHES.beauty;
+  if (/paw|pet|dog|cat|animal/.test(n)) return NICHES.pet;
+  if (/summit|outdoor|trail|camp|peak|adventure/.test(n)) return NICHES.outdoor;
   const idx = Math.abs(hash(brandName)) % NICHE_KEYS.length;
   return NICHES[NICHE_KEYS[idx]];
 }

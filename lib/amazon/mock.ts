@@ -203,6 +203,7 @@ export function generateClientDataset(
     const trend = 1 + (days - d) / (days * 6); // mild upward trend
 
     // Campaign-level ad metrics
+    let dayAdSales = 0;
     for (const cmp of campaigns) {
       const baseImpr = intBetween(rng, 400, 4000) * weekend * trend;
       const impressions = Math.round(baseImpr);
@@ -214,6 +215,7 @@ export function generateClientDataset(
       const orders = Math.round(clicks * cvr);
       const aov = between(rng, 20, 70);
       const sales = round(orders * aov);
+      dayAdSales += sales;
       adMetrics.push({
         campaignExternalId: cmp.externalId,
         date,
@@ -251,11 +253,18 @@ export function generateClientDataset(
       });
     }
 
-    // Product sales metrics
-    for (const p of products) {
-      const sessions = Math.round(intBetween(rng, 50, 600) * weekend * trend);
-      const cvr = between(rng, 0.05, 0.22);
-      const units = Math.round(sessions * cvr);
+    // Product sales metrics. Total business revenue is anchored to the day's ad
+    // sales so TACOS (= spend / revenue) lands in a believable range: ad sales
+    // is treated as ~25–45% of total revenue, the rest being organic.
+    const adSalesShare = between(rng, 0.25, 0.45);
+    const dayRevenue = dayAdSales / adSalesShare;
+    const weights = products.map(() => between(rng, 0.5, 1.5));
+    const weightSum = weights.reduce((s, w) => s + w, 0) || 1;
+    products.forEach((p, pi) => {
+      const productRevenue = dayRevenue * (weights[pi] / weightSum);
+      const units = Math.max(0, Math.round(productRevenue / p.price));
+      const cvr = between(rng, 0.06, 0.2);
+      const sessions = Math.max(units, Math.round(units / cvr));
       salesMetrics.push({
         asin: p.asin,
         date,
@@ -266,7 +275,7 @@ export function generateClientDataset(
         buyBoxPct: round(between(rng, 0.7, 0.99), 4),
         conversionRate: round(cvr, 4),
       });
-    }
+    });
   }
 
   // --- SQP metrics: weekly-ish snapshots for top queries ---
